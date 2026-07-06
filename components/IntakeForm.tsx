@@ -14,7 +14,8 @@ const defaultForm: IntakeFormPayload = {
   primary_contact_email: '',
   primary_contact_phone: '',
   team_contacts: [{ name: '', email: '', role: '' }],
-  products_subscribed: [],
+  service_subscribed: '',
+  other_service_details: '',
   autoleads_verticals: [],
   autoleads_campaign_goals: '',
   frank_workflows: '',
@@ -30,12 +31,33 @@ const defaultForm: IntakeFormPayload = {
   notes: '',
 };
 
-const products = ['AutoLeads', 'Frank', 'Dakota'];
+const services = ['AutoLeads', 'Frank', 'Other'];
 const verticals = ['B2B SaaS', 'E-commerce', 'Healthcare', 'Real Estate', 'Fintech', 'Professional Services', 'Other'];
 
 function sanitizeBoolean(value: boolean) {
   return Boolean(value);
 }
+
+const emailProviderDefaults: Record<string, { imap_server: string; imap_port: string; smtp_server: string; smtp_port: string }> = {
+  Gmail: {
+    imap_server: 'imap.gmail.com',
+    imap_port: '993',
+    smtp_server: 'smtp.gmail.com',
+    smtp_port: '587',
+  },
+  Outlook: {
+    imap_server: 'imap-mail.outlook.com',
+    imap_port: '993',
+    smtp_server: 'smtp-mail.outlook.com',
+    smtp_port: '587',
+  },
+  Other: {
+    imap_server: '',
+    imap_port: '',
+    smtp_server: '',
+    smtp_port: '',
+  },
+};
 
 export default function IntakeForm({ clientId }: Props) {
   const [form, setForm] = useState<IntakeFormPayload>({ ...defaultForm, client_id: clientId });
@@ -47,18 +69,19 @@ export default function IntakeForm({ clientId }: Props) {
     setForm((prev) => ({ ...prev, client_id: clientId }));
   }, [clientId]);
 
-  const selectedProducts = useMemo(() => new Set(form.products_subscribed), [form.products_subscribed]);
-
   const updateField = (field: keyof IntakeFormPayload, value: any) => {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  const toggleProduct = (product: string) => {
-    setForm((prev) => {
-      const subscribed = new Set(prev.products_subscribed);
-      subscribed.has(product) ? subscribed.delete(product) : subscribed.add(product);
-      return { ...prev, products_subscribed: Array.from(subscribed) };
-    });
+  const handleServiceChange = (value: string) => {
+    setForm((prev) => ({
+      ...prev,
+      service_subscribed: value,
+      autoleads_verticals: value === 'AutoLeads' ? prev.autoleads_verticals : [],
+      autoleads_campaign_goals: value === 'AutoLeads' ? prev.autoleads_campaign_goals : '',
+      frank_workflows: value === 'Frank' ? prev.frank_workflows : '',
+      other_service_details: value === 'Other' ? prev.other_service_details : '',
+    }));
   };
 
   const updateTeamMember = (index: number, field: keyof IntakeFormPayload['team_contacts'][number], value: string) => {
@@ -70,6 +93,21 @@ export default function IntakeForm({ clientId }: Props) {
   const updateEmailAccount = (index: number, field: keyof IntakeFormPayload['email_accounts'][number], value: string) => {
     const next = [...form.email_accounts];
     next[index] = { ...next[index], [field]: value };
+    updateField('email_accounts', next);
+  };
+
+  const handleEmailProviderChange = (index: number, provider: string) => {
+    const next = [...form.email_accounts];
+    const account = next[index] ?? { provider: '', email: '', imap_server: '', imap_port: '', smtp_server: '', smtp_port: '' };
+    const defaults = emailProviderDefaults[provider] || emailProviderDefaults.Other;
+    next[index] = {
+      ...account,
+      provider,
+      imap_server: provider === 'Other' ? account.imap_server : defaults.imap_server,
+      imap_port: provider === 'Other' ? account.imap_port : defaults.imap_port,
+      smtp_server: provider === 'Other' ? account.smtp_server : defaults.smtp_server,
+      smtp_port: provider === 'Other' ? account.smtp_port : defaults.smtp_port,
+    };
     updateField('email_accounts', next);
   };
 
@@ -189,21 +227,22 @@ export default function IntakeForm({ clientId }: Props) {
           <section className="section">
             <div className="section-header">
               <div>
-                <h2 className="section-title">Products Subscribed</h2>
-                <p className="section-description">Select the products your company is signing up for.</p>
+                <h2 className="section-title">Services Subscribed</h2>
+                <p className="section-description">Select the service your company is signing up for.</p>
               </div>
             </div>
-            <div className="input-row">
-              {products.map((product) => (
-                <label key={product} style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
-                  <input type="checkbox" checked={selectedProducts.has(product)} onChange={() => toggleProduct(product)} />
-                  {product}
-                </label>
-              ))}
-            </div>
+            <label>
+              Service
+              <select value={form.service_subscribed} onChange={(e) => handleServiceChange(e.target.value)} required>
+                <option value="">Select a service</option>
+                {services.map((service) => (
+                  <option key={service} value={service}>{service}</option>
+                ))}
+              </select>
+            </label>
           </section>
 
-          {selectedProducts.has('AutoLeads') && (
+          {form.service_subscribed === 'AutoLeads' && (
             <section className="section">
               <div className="section-header">
                 <div>
@@ -229,7 +268,7 @@ export default function IntakeForm({ clientId }: Props) {
             </section>
           )}
 
-          {selectedProducts.has('Frank') && (
+          {form.service_subscribed === 'Frank' && (
             <section className="section">
               <div className="section-header">
                 <div>
@@ -244,17 +283,17 @@ export default function IntakeForm({ clientId }: Props) {
             </section>
           )}
 
-          {selectedProducts.has('Dakota') && (
+          {form.service_subscribed === 'Other' && (
             <section className="section">
               <div className="section-header">
                 <div>
-                  <h2 className="section-title">Dakota</h2>
-                  <p className="section-description">Describe Dakota bot tone, response style, and escalation rules.</p>
+                  <h2 className="section-title">Other</h2>
+                  <p className="section-description">Describe the service or support you need.</p>
                 </div>
               </div>
               <label>
-                Dakota preferences
-                <textarea value={form.dakota_preferences} onChange={(e) => updateField('dakota_preferences', e.target.value)} />
+                Other service details
+                <textarea value={form.other_service_details} onChange={(e) => updateField('other_service_details', e.target.value)} />
               </label>
             </section>
           )}
@@ -272,28 +311,41 @@ export default function IntakeForm({ clientId }: Props) {
                   <div className="two-grid">
                     <label>
                       Provider
-                      <input value={account.provider} onChange={(e) => updateEmailAccount(index, 'provider', e.target.value)} />
+                      <select value={account.provider} onChange={(e) => handleEmailProviderChange(index, e.target.value)} required>
+                        <option value="">Select a provider</option>
+                        <option value="Gmail">Gmail</option>
+                        <option value="Outlook">Outlook</option>
+                        <option value="Other">Other</option>
+                      </select>
                     </label>
                     <label>
                       Email
-                      <input type="email" value={account.email} onChange={(e) => updateEmailAccount(index, 'email', e.target.value)} />
+                      <input type="email" value={account.email} onChange={(e) => updateEmailAccount(index, 'email', e.target.value)} required />
                     </label>
-                    <label>
-                      IMAP server
-                      <input value={account.imap_server} onChange={(e) => updateEmailAccount(index, 'imap_server', e.target.value)} />
-                    </label>
-                    <label>
-                      IMAP port
-                      <input value={account.imap_port} onChange={(e) => updateEmailAccount(index, 'imap_port', e.target.value)} />
-                    </label>
-                    <label>
-                      SMTP server
-                      <input value={account.smtp_server} onChange={(e) => updateEmailAccount(index, 'smtp_server', e.target.value)} />
-                    </label>
-                    <label>
-                      SMTP port
-                      <input value={account.smtp_port} onChange={(e) => updateEmailAccount(index, 'smtp_port', e.target.value)} />
-                    </label>
+                    {account.provider === 'Other' ? (
+                      <>
+                        <label>
+                          IMAP server
+                          <input value={account.imap_server} onChange={(e) => updateEmailAccount(index, 'imap_server', e.target.value)} required />
+                        </label>
+                        <label>
+                          IMAP port
+                          <input value={account.imap_port} onChange={(e) => updateEmailAccount(index, 'imap_port', e.target.value)} required />
+                        </label>
+                        <label>
+                          SMTP server
+                          <input value={account.smtp_server} onChange={(e) => updateEmailAccount(index, 'smtp_server', e.target.value)} required />
+                        </label>
+                        <label>
+                          SMTP port
+                          <input value={account.smtp_port} onChange={(e) => updateEmailAccount(index, 'smtp_port', e.target.value)} required />
+                        </label>
+                      </>
+                    ) : account.provider ? (
+                      <div style={{ marginTop: 16, color: '#cbd5e1' }}>
+                        {account.provider} is auto-configured. Select "Other" to enter custom IMAP/SMTP settings.
+                      </div>
+                    ) : null}
                   </div>
                   <div style={{ marginTop: 14, display: 'flex', justifyContent: 'flex-end' }}>
                     <button type="button" className="secondary-button" onClick={() => updateField('email_accounts', form.email_accounts.filter((_, i) => i !== index))}>Remove</button>

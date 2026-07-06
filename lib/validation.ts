@@ -9,7 +9,8 @@ export interface IntakeFormPayload {
   primary_contact_email: string;
   primary_contact_phone: string;
   team_contacts: TeamContact[];
-  products_subscribed: string[];
+  service_subscribed: string;
+  other_service_details: string;
   autoleads_verticals: string[];
   autoleads_campaign_goals: string;
   frank_workflows: string;
@@ -154,6 +155,27 @@ export function getFormValidationErrors(payload: IntakeFormPayload): string[] {
     if ((account.smtp_server.trim() && !account.smtp_port.trim()) || (!account.smtp_server.trim() && account.smtp_port.trim())) {
       errors.push(`Email account #${index + 1} must specify both SMTP server and port or neither.`);
     }
+  }
+
+  if (!payload.service_subscribed.trim()) {
+    errors.push('Please select a service.');
+  }
+
+  if (payload.service_subscribed === 'AutoLeads') {
+    if (payload.autoleads_verticals.length === 0) {
+      errors.push('AutoLeads requires at least one target vertical.');
+    }
+    if (!payload.autoleads_campaign_goals.trim()) {
+      errors.push('AutoLeads campaign goals are required.');
+    }
+  }
+
+  if (payload.service_subscribed === 'Frank' && !payload.frank_workflows.trim()) {
+    errors.push('Frank workflow preferences are required.');
+  }
+
+  if (payload.service_subscribed === 'Other' && !payload.other_service_details.trim()) {
+    errors.push('Please describe the other service you need.');
   }
 
   if (!payload.client_id.trim() || !isUuid(payload.client_id)) {

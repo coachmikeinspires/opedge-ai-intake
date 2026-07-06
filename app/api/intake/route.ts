@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
       primary_contact_phone: sanitizedPayload.primary_contact_phone || null,
       team_contacts: sanitizedPayload.team_contacts || [],
       email_accounts: sanitizedPayload.email_accounts || [],
-      products_subscribed: sanitizedPayload.products_subscribed || [],
+      products_subscribed: sanitizedPayload.service_subscribed ? [sanitizedPayload.service_subscribed] : [],
       autoleads_verticals: sanitizedPayload.autoleads_verticals || [],
       autoleads_campaign_goals: sanitizedPayload.autoleads_campaign_goals || null,
       frank_workflows: sanitizedPayload.frank_workflows ? { workflow: sanitizedPayload.frank_workflows } : {},

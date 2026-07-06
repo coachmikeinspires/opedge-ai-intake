@@ -21,18 +21,20 @@ function safeJson(value: any) {
 
 export function adminNotificationEmail(data: any) {
   const productBadges = (data.products_subscribed || []).map((product: string) => formatBadge(product)).join('');
+  const serviceLabel = data.products_subscribed?.length ? data.products_subscribed.join(', ') : 'None';
+  const otherDetails = data.other_service_details ? `<br/>Details: ${sanitizeText(data.other_service_details)}` : '';
 
   const rows = [
     formatSection('Company & Contact Info', `Company: ${data.company_name || '—'}<br/>Primary contact: ${data.primary_contact_name || '—'}<br/>Email: ${data.primary_contact_email || '—'}<br/>Phone: ${data.primary_contact_phone || '—'}`),
     formatSection('Team Contacts', safeJson(data.team_contacts || [])),
-    formatSection('Products Subscribed', `${productBadges || 'None'}`),
+    formatSection('Services Subscribed', `${productBadges || serviceLabel}`),
     formatSection('AutoLeads Details', `Verticals: ${((data.autoleads_verticals || []).join(', ') || '—')}<br/>Campaign goals:<br/>${data.autoleads_campaign_goals || '—'}`),
     formatSection('Frank Workflow Preferences', safeJson(data.frank_workflows || {})),
-    formatSection('Dakota Preferences', safeJson(data.dakota_preferences || {})),
     formatSection('Email Accounts', safeJson(data.email_accounts || [])),
     formatSection('Google Workspace', `Verified: ${data.google_workspace_verified ? 'Yes' : 'No'}<br/>Domain: ${data.google_workspace_domain || '—'}<br/>Email: ${data.google_workspace_email || '—'}`),
     formatSection('Social Links', safeJson(data.social_links || {})),
     formatSection('Landing Pages', safeJson(data.landing_page_urls || [])),
+    formatSection('Other Service Details', data.other_service_details || '—'),
     formatSection('Campaign Timeline', `Kickoff: ${data.kickoff_date || '—'}<br/>Launch: ${data.launch_date || '—'}`),
     formatSection('Additional Notes', data.notes || '—'),
     formatSection('Submission Details', `Client ID: ${sanitizeText(data.client_id) || '—'}<br/>Submitted at: ${sanitizeText(data.submitted_at) || '—'}<br/>IP address: ${sanitizeText(data.ip_address) || '—'}<br/>User agent: <span style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;">${sanitizeText(data.user_agent) || '—'}</span>`),
