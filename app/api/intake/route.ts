@@ -4,7 +4,7 @@ import { getResendClient } from '@/lib/resendClient';
 import { clientConfirmationEmail, adminNotificationEmail } from '@/lib/emailTemplates';
 import { getRequestIp, validateClientLink, normalizeFormPayload, querySubmissionByClientId } from '@/lib/intakeHelpers';
 import { computeFormDataHash } from '@/lib/dataHash';
-import { getFormValidationErrors, IntakeFormPayload, isUuid } from '@/lib/validation';
+import { getFormValidationErrors, IntakeFormPayload, isUuid, isValidIp } from '@/lib/validation';
 import { logError, logInfo } from '@/lib/logger';
 
 const NOTIFY_WEBHOOK_URL = process.env.DAKOTA_NOTIFY_WEBHOOK || '';
@@ -62,8 +62,11 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const ipAddress = getRequestIp(request) || '0.0.0.0';
-  const userAgent = request.headers.get('user-agent') || 'unknown';
+  // Both headers are attacker-controlled: reject malformed IPs and cap the
+  // user agent so neither can smuggle markup or oversized values downstream.
+  const rawIp = getRequestIp(request);
+  const ipAddress = rawIp && isValidIp(rawIp) ? rawIp : '0.0.0.0';
+  const userAgent = (request.headers.get('user-agent') || 'unknown').slice(0, 400);
 
   try {
     const payload = (await request.json()) as IntakeFormPayload;

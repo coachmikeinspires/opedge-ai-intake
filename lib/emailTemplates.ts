@@ -1,3 +1,5 @@
+import { sanitizeText } from './validation';
+
 export function clientConfirmationEmail(name: string) {
   return {
     subject: 'Thanks for submitting your Opendge intake form',
@@ -33,7 +35,7 @@ export function adminNotificationEmail(data: any) {
     formatSection('Landing Pages', safeJson(data.landing_page_urls || [])),
     formatSection('Campaign Timeline', `Kickoff: ${data.kickoff_date || '—'}<br/>Launch: ${data.launch_date || '—'}`),
     formatSection('Additional Notes', data.notes || '—'),
-    formatSection('Submission Details', `Client ID: ${data.client_id || '—'}<br/>Submitted at: ${data.submitted_at || '—'}<br/>IP address: ${data.ip_address || '—'}<br/>User agent: <span style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;">${data.user_agent || '—'}</span>`),
+    formatSection('Submission Details', `Client ID: ${sanitizeText(data.client_id) || '—'}<br/>Submitted at: ${sanitizeText(data.submitted_at) || '—'}<br/>IP address: ${sanitizeText(data.ip_address) || '—'}<br/>User agent: <span style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;">${sanitizeText(data.user_agent) || '—'}</span>`),
   ].join('');
 
   return {

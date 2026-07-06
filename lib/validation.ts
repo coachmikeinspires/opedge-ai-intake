@@ -61,6 +61,13 @@ export function isValidPort(value: string): boolean {
   return Number.isInteger(port) && port >= 1 && port <= 65535;
 }
 
+export function isValidIp(value: string): boolean {
+  if (!value) return false;
+  const ipv4 = /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/;
+  const ipv6 = /^[0-9a-fA-F:]{2,45}$/;
+  return ipv4.test(value) || (value.includes(':') && ipv6.test(value));
+}
+
 export function sanitizeText(value: unknown): string {
   if (typeof value !== 'string') return '';
   return value
