@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
 
     const { error: updateError } = await supabase
       .from('intake_submissions')
-      .update({ status: 'agreement_sent' })
+      .update({ status: 'agreement_sent', signnow_document_id: documentId })
       .eq('id', submissionId);
     if (updateError) logError('Status update to agreement_sent failed', { error: updateError, submissionId });
 

@@ -32,6 +32,32 @@ export function clientConfirmationEmail(name: string, details?: AssistantSetupDe
   };
 }
 
+/**
+ * Post-signature onboarding email. Values may come straight from the DB, so
+ * everything user-derived is escaped here at render time.
+ */
+export function onboardingEmail(data: { primary_contact_name?: string | null; assistant_name?: string | null; onboarding_windows?: string | null }) {
+  const name = sanitizeText(data.primary_contact_name || '') || 'there';
+  const assistant = sanitizeText(data.assistant_name || '');
+  const windows = sanitizeText(data.onboarding_windows || '');
+
+  const availability = windows
+    ? `<p style="margin:0 0 16px; color:#cbd5e1;">You mentioned these times work for you: <strong style="color:#e2e8f0;">${windows}</strong>. Reply to this email to confirm one, or suggest another — Mike will confirm the final time by email.</p>`
+    : `<p style="margin:0 0 16px; color:#cbd5e1;">Reply to this email with a few days and times that work for you — Mike will confirm the final time by email.</p>`;
+
+  const checklist = [
+    'A laptop with Google Chrome installed',
+    'Your Google password available',
+    'Your phone in hand for two-factor authentication',
+    'Telegram installed (phone and/or desktop)',
+  ].map((item) => `<li style="margin:0 0 8px;">${item}</li>`).join('');
+
+  return {
+    subject: "Welcome to Op Edge AI — let's schedule your setup",
+    html: `<html><body style="font-family: Inter, sans-serif; background:#020617; color:#e2e8f0; padding:24px;"><div style="max-width:600px; margin:0 auto; background:#0f172a; border:1px solid rgba(148,163,184,.16); border-radius:20px; padding:28px;"><h1 style="margin:0 0 16px;font-size:24px;color:#bfdbfe;">Welcome to Op Edge AI, ${name}!</h1><p style="margin:0 0 16px; color:#cbd5e1;">Your agreement is signed and we're ready to bring ${assistant ? `<strong style="color:#e2e8f0;">${assistant}</strong>, ` : ''}your managed AI assistant${assistant ? ',' : ''} online.</p><p style="margin:0 0 16px; color:#cbd5e1;"><strong style="color:#e2e8f0;">What happens next:</strong> we'll do a 30–45 minute supervised setup session together to connect your accounts and introduce you to your assistant.</p>${availability}<p style="margin:0 0 8px; color:#e2e8f0;"><strong>Before the session, please have ready:</strong></p><ul style="margin:0 0 16px; padding-left:20px; color:#cbd5e1;">${checklist}</ul><p style="margin:0; color:#cbd5e1;">Talk soon,<br/>The Op Edge AI team</p></div></body></html>`,
+  };
+}
+
 function formatBadge(label: string) {
   return `<span style="display:inline-block;margin:0 4px 6px;padding:6px 10px;border-radius:999px;background:#2563eb;color:#e0f2fe;font-size:0.84rem;">${label}</span>`;
 }

@@ -79,6 +79,27 @@ export function buildPrefillFields(submission: AgreementSubmission, pricing: Agr
 }
 
 /**
+ * Fetches a document from SignNow. Used by the webhook to verify that a
+ * completion event is genuine before acting on it.
+ */
+export async function getDocument(documentId: string): Promise<any> {
+  if (!/^[a-f0-9]{20,64}$/i.test(documentId)) throw new Error('Invalid document id format.');
+  return sn(`/document/${documentId}`);
+}
+
+/** True when every signer invite on the document is fulfilled. */
+export function isDocumentComplete(doc: any): boolean {
+  const invites: Array<{ status?: string }> = doc?.field_invites || [];
+  return invites.length > 0 && invites.every((i) => i.status === 'fulfilled');
+}
+
+/** All signer emails on the document, lowercased. */
+export function documentSignerEmails(doc: any): string[] {
+  const invites: Array<{ email?: string }> = doc?.field_invites || [];
+  return invites.map((i) => (i.email || '').toLowerCase()).filter(Boolean);
+}
+
+/**
  * Copies the template, prefills the sender fields, and sends the invite with
  * the client as signer 1 and mike@opedge.ai as signer 2. Role ids and the
  * account sender email are read from SignNow so nothing is hardcoded to the
