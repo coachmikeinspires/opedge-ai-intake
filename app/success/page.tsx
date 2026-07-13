@@ -13,7 +13,7 @@ export default function SuccessPage() {
           <h2 style={{ marginTop: 0, color: '#d1fae5' }}>What happens next</h2>
           <p>Our team will validate your submission, follow up with any clarification questions, and prepare the campaign kickoff plan.</p>
           <p>If you submitted with an email address, check your inbox for confirmation from <strong>noreply@opedge.ai</strong>.</p>
-          <p>Need to update anything? Reply to the notification email or contact your Opendge representative.</p>
+          <p>Need to update anything? Reply to the notification email or contact your Op Edge AI representative.</p>
         </div>
       </div>
     </main>

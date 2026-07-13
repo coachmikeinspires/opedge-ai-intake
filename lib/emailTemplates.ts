@@ -27,8 +27,8 @@ function assistantSetupSummary(details?: AssistantSetupDetails) {
 
 export function clientConfirmationEmail(name: string, details?: AssistantSetupDetails) {
   return {
-    subject: 'Thanks for submitting your Opendge intake form',
-    html: `<html><body style="font-family: Inter, sans-serif; background:#020617; color:#e2e8f0; padding:24px;"><div style="max-width:600px; margin:0 auto; background:#0f172a; border:1px solid rgba(148,163,184,.16); border-radius:20px; padding:28px;"><h1 style="margin:0 0 16px;font-size:24px;color:#bfdbfe;">Thanks for submitting, ${name}</h1><p style="margin:0 0 16px; color:#cbd5e1;">We received your intake submission and our team will review it shortly.</p>${assistantSetupSummary(details)}<p style="margin:0 0 16px; color:#cbd5e1;">Next steps: validation, clarification, and campaign kickoff planning. If we need anything else, we’ll reach out to the address you provided.</p><p style="margin:0; color:#cbd5e1;">Warm regards,<br/>The Opendge team</p></div></body></html>`,
+    subject: 'Thanks for submitting your Op Edge AI intake form',
+    html: `<html><body style="font-family: Inter, sans-serif; background:#020617; color:#e2e8f0; padding:24px;"><div style="max-width:600px; margin:0 auto; background:#0f172a; border:1px solid rgba(148,163,184,.16); border-radius:20px; padding:28px;"><h1 style="margin:0 0 16px;font-size:24px;color:#bfdbfe;">Thanks for submitting, ${name}</h1><p style="margin:0 0 16px; color:#cbd5e1;">We received your intake submission and our team will review it shortly.</p>${assistantSetupSummary(details)}<p style="margin:0 0 16px; color:#cbd5e1;">Next steps: validation, clarification, and campaign kickoff planning. If we need anything else, we’ll reach out to the address you provided.</p><p style="margin:0; color:#cbd5e1;">Warm regards,<br/>The Op Edge AI team</p></div></body></html>`,
   };
 }
 
@@ -67,7 +67,7 @@ export function adminNotificationEmail(data: any) {
   ].join('');
 
   return {
-    subject: `New Opendge intake submission from ${data.company_name || data.primary_contact_name || 'client'}`,
+    subject: `New Op Edge AI intake submission from ${data.company_name || data.primary_contact_name || 'client'}`,
     html: `<html><body style="font-family: Inter, sans-serif; background:#020617; color:#e2e8f0; padding:24px;"><div style="max-width:700px; margin:0 auto; background:#0f172a; border:1px solid rgba(148,163,184,.16); border-radius:20px; padding:28px;"><h1 style="margin:0 0 20px; font-size:24px; color:#bfdbfe;">New intake submission received</h1><table width="100%" cellpadding="0" cellspacing="0">${rows}</table></div></body></html>`,
   };
 }

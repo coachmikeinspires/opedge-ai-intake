@@ -3,8 +3,8 @@ import type { ReactNode } from 'react';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Opendge Client Intake',
-  description: 'Client intake form for Opendge product onboarding.',
+  title: 'Op Edge AI Intake',
+  description: 'Client intake form for Op Edge AI product onboarding.',
   robots: {
     index: false,
     follow: false,

@@ -174,7 +174,7 @@ export default function IntakeForm({ clientId }: Props) {
     <main className="container">
       <div className="header">
         <p className="badge">Private client intake</p>
-        <h1 className="title">Opendge Client Intake</h1>
+        <h1 className="title">Op Edge AI Intake</h1>
         <p className="subtitle">Complete the form below to help our team scope your onboarding and campaign setup.</p>
       </div>
 

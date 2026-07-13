@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
         .from('intake_submission_attempts')
         .update({ status: 'failed', error_message: 'duplicate_submission' })
         .eq('id', attemptData?.id);
-      return NextResponse.json({ error: 'This intake link has already been used recently. Please contact your Opendge representative.' }, { status: 409 });
+      return NextResponse.json({ error: 'This intake link has already been used recently. Please contact your Op Edge AI representative.' }, { status: 409 });
     }
 
     const sanitizedPayload = normalizeFormPayload(payload);

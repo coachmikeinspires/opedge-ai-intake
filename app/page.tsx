@@ -33,7 +33,7 @@ export default async function Page({ searchParams }: PageProps) {
           <p className="subtitle">The link may be expired, already submitted, or not authorized.</p>
         </div>
         <div className="card" style={{ padding: '32px' }}>
-          <p className="summary">Contact your Opendge representative for a new intake link.</p>
+          <p className="summary">Contact your Op Edge AI representative for a new intake link.</p>
         </div>
       </main>
     );
