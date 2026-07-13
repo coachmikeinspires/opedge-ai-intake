@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseClient';
 import { getResendClient } from '@/lib/resendClient';
-import { onboardingEmail } from '@/lib/emailTemplates';
+import { onboardingEmail, signedNotificationEmail } from '@/lib/emailTemplates';
 import { getDocument, isDocumentComplete, documentSignerEmails } from '@/lib/signnow';
 import { isValidAdminToken } from '@/lib/adminAuth';
 import { logError, logInfo } from '@/lib/logger';
@@ -86,6 +86,15 @@ async function processSigned(submissionId: number | string): Promise<string> {
   try {
     await sendOnboardingEmail(claimed);
     logInfo('Onboarding email sent', { submissionId });
+
+    // Heads-up to Mike (in addition to the CC on the client email). Failure
+    // here must not unwind the completed transition — log and move on.
+    try {
+      const note = signedNotificationEmail(claimed);
+      await getResendClient().emails.send({ from: 'noreply@opedge.ai', to: MIKE, subject: note.subject, html: note.html });
+    } catch (noteError) {
+      logError('Signed notification email failed', { submissionId, error: (noteError as Error).message });
+    }
     return 'onboarding_sent';
   } catch (emailError) {
     // Release the claim so a webhook retry can attempt the email again.

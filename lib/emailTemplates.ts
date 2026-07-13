@@ -32,6 +32,81 @@ export function clientConfirmationEmail(name: string, details?: AssistantSetupDe
   };
 }
 
+// ---------------------------------------------------------------------------
+// Action links for internal notifications to mike@opedge.ai. The admin URL is
+// built from ADMIN_TOKEN at send time — never hardcoded.
+// ---------------------------------------------------------------------------
+
+const INTAKE_BASE = process.env.INTAKE_PUBLIC_URL || 'https://intake.opedge.ai';
+
+export function adminQueueUrl(): string {
+  return `${INTAKE_BASE}/admin?token=${encodeURIComponent(process.env.ADMIN_TOKEN || '')}`;
+}
+
+export function signnowDocumentUrl(documentId: string): string {
+  return `https://app.signnow.com/webapp/document/${encodeURIComponent(documentId)}`;
+}
+
+function actionLinksHtml(links: Array<{ label: string; url: string }>) {
+  const buttons = links
+    .map((l) => `<a href="${l.url.replace(/"/g, '&quot;')}" style="display:inline-block;margin:0 10px 8px 0;padding:10px 16px;border-radius:10px;background:#2563eb;color:#e0f2fe;text-decoration:none;font-weight:600;">${sanitizeText(l.label)}</a>`)
+    .join('');
+  return `<div style="margin:18px 0 4px;"><p style="margin:0 0 8px;font-weight:700;color:#f8fafc;">Actions</p>${buttons}</div>`;
+}
+
+function internalShell(title: string, bodyHtml: string) {
+  return `<html><body style="font-family: Inter, sans-serif; background:#020617; color:#e2e8f0; padding:24px;"><div style="max-width:700px; margin:0 auto; background:#0f172a; border:1px solid rgba(148,163,184,.16); border-radius:20px; padding:28px;"><h1 style="margin:0 0 20px; font-size:24px; color:#bfdbfe;">${sanitizeText(title)}</h1>${bodyHtml}</div></body></html>`;
+}
+
+// ---------------------------------------------------------------------------
+// Internal pipeline notifications (all to mike@opedge.ai)
+// ---------------------------------------------------------------------------
+
+export function agreementSentEmail(data: {
+  legal_name?: string | null;
+  company_name?: string | null;
+  primary_contact_email?: string | null;
+  documentName: string;
+  documentId: string;
+  setupFeeText: string;
+  monthlyFeeText: string;
+  secondSigner: string;
+}) {
+  const who = data.legal_name || data.company_name || data.primary_contact_email || 'client';
+  const body = `<p style="margin:0 0 16px; color:#cbd5e1;">The service agreement was generated and sent for signing.</p><ul style="margin:0 0 8px; padding-left:20px; color:#cbd5e1;"><li style="margin:0 0 6px;">Document: ${sanitizeText(data.documentName)}</li><li style="margin:0 0 6px;">Signer 1 (client): ${sanitizeText(data.primary_contact_email || '—')}</li><li style="margin:0 0 6px;">Signer 2: ${sanitizeText(data.secondSigner)}</li><li style="margin:0 0 6px;">Setup fee: ${sanitizeText(data.setupFeeText)}</li><li style="margin:0 0 6px;">Monthly fee: ${sanitizeText(data.monthlyFeeText)}</li></ul>${actionLinksHtml([
+    { label: 'View document in SignNow', url: signnowDocumentUrl(data.documentId) },
+    { label: 'Open intake queue', url: adminQueueUrl() },
+  ])}`;
+  return {
+    subject: `Agreement sent: ${String(who).replace(/[\r\n]+/g, ' ')}`,
+    html: internalShell('Agreement sent for signing', body),
+  };
+}
+
+export function agreementErrorEmail(message: string) {
+  const body = `<p style="margin:0 0 16px; color:#cbd5e1;">Generating/sending an agreement failed. The submission status was not changed.</p><p style="margin:0 0 12px; color:#fca5a5;">Error: ${sanitizeText(message)}</p><p style="margin:0 0 12px; color:#cbd5e1;">If SignNow auth failed: token may be expired (password-grant tokens last ~30 days); regenerate and update SIGNNOW_API_TOKEN in Railway.</p>${actionLinksHtml([
+    { label: 'Open intake queue', url: adminQueueUrl() },
+  ])}`;
+  return {
+    subject: 'Agreement send FAILED',
+    html: internalShell('Agreement send failed', body),
+  };
+}
+
+export function signedNotificationEmail(data: { primary_contact_name?: string | null; onboarding_windows?: string | null }) {
+  const name = sanitizeText(data.primary_contact_name || '') || 'Client';
+  const windows = sanitizeText(data.onboarding_windows || '');
+  const body = `<p style="margin:0 0 16px; color:#cbd5e1;">${name} completed signing. The onboarding email went out to them automatically (you were CC'd).</p>${
+    windows ? `<p style="margin:0 0 16px; color:#cbd5e1;">Their stated availability: <strong style="color:#e2e8f0;">${windows}</strong></p>` : ''
+  }<p style="margin:0 0 12px; color:#cbd5e1;"><strong style="color:#e2e8f0;">Next human step:</strong> reply to confirm their setup session time by email.</p>${actionLinksHtml([
+    { label: 'Open intake queue', url: adminQueueUrl() },
+  ])}`;
+  return {
+    subject: `${String(data.primary_contact_name || 'Client').replace(/[\r\n]+/g, ' ')} signed — onboarding email sent automatically`,
+    html: internalShell(`${name} signed 🎉`, body),
+  };
+}
+
 /**
  * Post-signature onboarding email. Values may come straight from the DB, so
  * everything user-derived is escaped here at render time.
@@ -90,6 +165,7 @@ export function adminNotificationEmail(data: any) {
     formatSection('Additional Notes', data.notes || '—'),
     formatSection('AI Assistant Setup', `Legal name: ${data.legal_name || '—'}<br/>Business address: ${data.business_address || '—'}<br/>Primary Google account: ${data.primary_google_account || '—'}<br/>Time zone: ${data.client_timezone || '—'}<br/>Assistant name: ${data.assistant_name || '—'}<br/>Setup session availability: ${data.onboarding_windows || '—'}`),
     formatSection('Submission Details', `Client ID: ${sanitizeText(data.client_id) || '—'}<br/>Submitted at: ${sanitizeText(data.submitted_at) || '—'}<br/>IP address: ${sanitizeText(data.ip_address) || '—'}<br/>User agent: <span style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;">${sanitizeText(data.user_agent) || '—'}</span>`),
+    `<tr><td>${actionLinksHtml([{ label: 'Set pricing & send agreement', url: adminQueueUrl() }])}</td></tr>`,
   ].join('');
 
   return {
