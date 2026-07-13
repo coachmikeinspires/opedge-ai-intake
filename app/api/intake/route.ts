@@ -167,6 +167,12 @@ export async function POST(request: NextRequest) {
       kickoff_date: sanitizedPayload.kickoff_date || null,
       launch_date: sanitizedPayload.launch_date || null,
       notes: sanitizedPayload.notes || null,
+      legal_name: sanitizedPayload.legal_name || null,
+      business_address: sanitizedPayload.business_address || null,
+      primary_google_account: sanitizedPayload.primary_google_account || null,
+      client_timezone: sanitizedPayload.client_timezone || null,
+      assistant_name: sanitizedPayload.assistant_name || null,
+      onboarding_windows: sanitizedPayload.onboarding_windows || null,
       form_data_hash: formDataHash,
       submitted_at: attemptTimestamp,
       ip_address: ipAddress,
@@ -195,7 +201,7 @@ export async function POST(request: NextRequest) {
 
     try {
       if (sanitizedPayload.primary_contact_email) {
-        const confirmation = clientConfirmationEmail(sanitizedPayload.primary_contact_name || 'there');
+        const confirmation = clientConfirmationEmail(sanitizedPayload.primary_contact_name || 'there', sanitizedPayload);
         await retryWithBackoff(() => resendClient.emails.send({
           from: 'noreply@opedge.ai',
           to: sanitizedPayload.primary_contact_email,
@@ -212,7 +218,7 @@ export async function POST(request: NextRequest) {
       });
       await retryWithBackoff(() => resendClient.emails.send({
         from: 'noreply@opedge.ai',
-        to: ['mike@opedge.ai', 'dennis@opedge.ai'],
+        to: ['mike@opedge.ai'],
         subject: adminEmail.subject,
         html: adminEmail.html,
       }));
@@ -232,7 +238,7 @@ export async function POST(request: NextRequest) {
     await notifyDakotaBot({ ...sanitizedPayload, submitted_at: attemptTimestamp, ip_address: ipAddress, user_agent: userAgent });
     await supabaseAdmin
       .from('intake_submissions')
-      .update({ mike_notified: true, dennis_notified: true })
+      .update({ mike_notified: true })
       .eq('client_id', payload.client_id);
     await supabaseAdmin
       .from('intake_submission_attempts')

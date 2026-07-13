@@ -24,6 +24,12 @@ export interface IntakeFormPayload {
   kickoff_date: string;
   launch_date: string;
   notes: string;
+  legal_name: string;
+  business_address: string;
+  primary_google_account: string;
+  client_timezone: string;
+  assistant_name: string;
+  onboarding_windows: string;
 }
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -177,6 +183,15 @@ export function getFormValidationErrors(payload: IntakeFormPayload): string[] {
   if (payload.service_subscribed === 'Other' && !payload.other_service_details.trim()) {
     errors.push('Please describe the other service you need.');
   }
+
+  if (!payload.legal_name.trim()) errors.push('Legal name is required.');
+  if (!payload.business_address.trim()) errors.push('Business address is required.');
+  if (!payload.primary_google_account.trim()) {
+    errors.push('Primary Google account is required.');
+  } else if (!isValidEmail(payload.primary_google_account)) {
+    errors.push('Primary Google account must be a valid email address.');
+  }
+  if (!payload.client_timezone.trim()) errors.push('Please select your time zone.');
 
   if (!payload.client_id.trim() || !isUuid(payload.client_id)) {
     errors.push('Invalid intake link.');

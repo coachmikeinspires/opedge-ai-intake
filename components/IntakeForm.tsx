@@ -29,9 +29,25 @@ const defaultForm: IntakeFormPayload = {
   kickoff_date: '',
   launch_date: '',
   notes: '',
+  legal_name: '',
+  business_address: '',
+  primary_google_account: '',
+  client_timezone: '',
+  assistant_name: '',
+  onboarding_windows: '',
 };
 
 const services = ['AutoLeads', 'Frank', 'Other'];
+const timezones = [
+  { value: 'America/Los_Angeles', label: 'Pacific' },
+  { value: 'America/Denver', label: 'Mountain' },
+  { value: 'America/Phoenix', label: 'Arizona' },
+  { value: 'America/Chicago', label: 'Central' },
+  { value: 'America/New_York', label: 'Eastern' },
+  { value: 'America/Anchorage', label: 'Alaska' },
+  { value: 'Pacific/Honolulu', label: 'Hawaii' },
+  { value: 'other', label: "Other (we'll confirm with you)" },
+];
 const verticals = ['B2B SaaS', 'E-commerce', 'Healthcare', 'Real Estate', 'Fintech', 'Professional Services', 'Other'];
 
 function sanitizeBoolean(value: boolean) {
@@ -382,6 +398,44 @@ export default function IntakeForm({ clientId }: Props) {
                 </label>
               )}
             </div>
+          </section>
+
+          <section className="section">
+            <div className="section-header">
+              <div>
+                <h2 className="section-title">AI Assistant Setup</h2>
+                <p className="section-description">Details we need to provision your managed AI assistant.</p>
+              </div>
+            </div>
+            <div className="input-row two-grid">
+              <label>
+                Legal name (person or business entity for the service agreement)
+                <input value={form.legal_name} onChange={(e) => updateField('legal_name', e.target.value)} required />
+              </label>
+              <label>
+                Business address
+                <input value={form.business_address} onChange={(e) => updateField('business_address', e.target.value)} required />
+              </label>
+              <label>
+                Primary Google account (the Gmail/Workspace inbox you use daily — your assistant connects to this one)
+                <input type="email" value={form.primary_google_account} onChange={(e) => updateField('primary_google_account', e.target.value)} required />
+              </label>
+              <label>
+                Your time zone
+                <select value={form.client_timezone} onChange={(e) => updateField('client_timezone', e.target.value)} required>
+                  <option value="">Select your time zone</option>
+                  {timezones.map((tz) => <option key={tz.value} value={tz.value}>{tz.label}</option>)}
+                </select>
+              </label>
+              <label>
+                What would you like to name your assistant? (optional — you can decide later)
+                <input value={form.assistant_name} onChange={(e) => updateField('assistant_name', e.target.value)} />
+              </label>
+            </div>
+            <label>
+              Best days/times for your 45-minute setup session (we&apos;ll confirm by email)
+              <textarea value={form.onboarding_windows} onChange={(e) => updateField('onboarding_windows', e.target.value)} />
+            </label>
           </section>
 
           <section className="section">

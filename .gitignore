@@ -3,5 +3,6 @@ node_modules/
 out/
 .env
 .env*.local
+.env.production
 *.tsbuildinfo
 .DS_Store
