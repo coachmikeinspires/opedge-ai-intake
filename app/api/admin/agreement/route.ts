@@ -3,7 +3,13 @@ import { getSupabaseAdmin } from '@/lib/supabaseClient';
 import { getResendClient } from '@/lib/resendClient';
 import { isValidAdminToken } from '@/lib/adminAuth';
 import { buildPrefillFields, generateAndSendAgreement, formatMoney, AgreementPricing } from '@/lib/signnow';
+import { sanitizeText } from '@/lib/validation';
 import { logError, logInfo } from '@/lib/logger';
+
+// Values here are read back from the DB, which unlike the intake request path
+// is not guaranteed pre-escaped (rows can be inserted outside the app), so
+// escape at render time and keep subjects header-safe.
+const subj = (s: string) => s.replace(/[\r\n]+/g, ' ');
 
 const ADMIN_NOTIFY = 'mike@opedge.ai';
 const SECOND_SIGNER = 'mike@opedge.ai';
@@ -85,8 +91,8 @@ export async function POST(request: NextRequest) {
       await getResendClient().emails.send({
         from: 'noreply@opedge.ai',
         to: ADMIN_NOTIFY,
-        subject: `Agreement sent: ${submission.legal_name || submission.company_name || submission.primary_contact_email}`,
-        html: `<p>The service agreement was generated and sent for signing.</p><ul><li>Document: ${documentName}</li><li>Signer 1 (client): ${submission.primary_contact_email}</li><li>Signer 2: ${SECOND_SIGNER}</li><li>Setup fee: ${formatMoney(pricing.setup_fee)}</li><li>Monthly fee: ${formatMoney(pricing.monthly_fee)}</li></ul>`,
+        subject: subj(`Agreement sent: ${submission.legal_name || submission.company_name || submission.primary_contact_email}`),
+        html: `<p>The service agreement was generated and sent for signing.</p><ul><li>Document: ${sanitizeText(documentName)}</li><li>Signer 1 (client): ${sanitizeText(submission.primary_contact_email)}</li><li>Signer 2: ${SECOND_SIGNER}</li><li>Setup fee: ${formatMoney(pricing.setup_fee)}</li><li>Monthly fee: ${formatMoney(pricing.monthly_fee)}</li></ul>`,
       });
     } catch (emailError) {
       logError('Agreement confirmation email failed', { error: emailError, submissionId });
@@ -101,7 +107,7 @@ export async function POST(request: NextRequest) {
         from: 'noreply@opedge.ai',
         to: ADMIN_NOTIFY,
         subject: 'Agreement send FAILED',
-        html: `<p>Generating/sending an agreement failed. The submission status was not changed.</p><p>Error: ${message.replace(/</g, '&lt;')}</p>`,
+        html: `<p>Generating/sending an agreement failed. The submission status was not changed.</p><p>Error: ${sanitizeText(message)}</p>`,
       });
     } catch (emailError) {
       logError('Agreement failure email failed', { error: emailError });
