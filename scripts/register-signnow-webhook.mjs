@@ -38,10 +38,10 @@ const userId = user.id;
 if (!userId) throw new Error('Could not resolve SignNow user id.');
 console.log(`SignNow account: ${user.primary_email || '(email hidden)'}`);
 
-const existing = await sn('/api/v2/events');
+const existing = await sn('/v2/event-subscriptions');
 const events = existing.data || existing || [];
 const already = (Array.isArray(events) ? events : []).find(
-  (e) => e?.json_attributes?.callback === CALLBACK_URL || e?.attributes?.callback === CALLBACK_URL
+  (e) => e?.json_attributes?.callback_url === CALLBACK_URL || e?.attributes?.callback === CALLBACK_URL
 );
 if (already) {
   console.log(`Webhook already registered (event: ${already.event || 'unknown'}). Nothing to do.`);
@@ -51,7 +51,7 @@ if (already) {
 const attributes = { callback: CALLBACK_URL };
 if (process.env.SIGNNOW_WEBHOOK_SECRET) attributes.secret_key = process.env.SIGNNOW_WEBHOOK_SECRET;
 
-await sn('/api/v2/events', {
+await sn('/v2/event-subscriptions', {
   method: 'POST',
   body: JSON.stringify({
     event: 'user.document.complete',
