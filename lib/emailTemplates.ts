@@ -84,7 +84,7 @@ export function agreementSentEmail(data: {
 }
 
 export function agreementErrorEmail(message: string) {
-  const body = `<p style="margin:0 0 16px; color:#cbd5e1;">Generating/sending an agreement failed. The submission status was not changed.</p><p style="margin:0 0 12px; color:#fca5a5;">Error: ${sanitizeText(message)}</p><p style="margin:0 0 12px; color:#cbd5e1;">If SignNow auth failed: token may be expired (password-grant tokens last ~30 days); regenerate and update SIGNNOW_API_TOKEN in Railway.</p>${actionLinksHtml([
+  const body = `<p style="margin:0 0 16px; color:#cbd5e1;">Generating/sending an agreement failed. The submission status was not changed.</p><p style="margin:0 0 12px; color:#fca5a5;">Error: ${sanitizeText(message)}</p><p style="margin:0 0 12px; color:#cbd5e1;">If SignNow auth failed: access tokens auto-refresh, so a persistent auth failure means the refresh token itself is expired or revoked — re-run the one-time token setup command to store a new SIGNNOW_REFRESH_TOKEN in Railway.</p>${actionLinksHtml([
     { label: 'Open intake queue', url: adminQueueUrl() },
   ])}`;
   return {

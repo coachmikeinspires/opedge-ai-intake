@@ -14,12 +14,25 @@
 
 const BASE = 'https://api.signnow.com';
 const CALLBACK_URL = process.env.SIGNNOW_CALLBACK_URL || 'https://intake.opedge.ai/api/signnow-webhook';
-const TOKEN = process.env.SIGNNOW_API_TOKEN;
-
-if (!TOKEN) {
-  console.error('SIGNNOW_API_TOKEN is required (env var or .env.local via --env-file).');
+async function resolveToken() {
+  const basic = process.env.SIGNNOW_BASIC_TOKEN;
+  const refresh = process.env.SIGNNOW_REFRESH_TOKEN;
+  if (basic && refresh) {
+    const res = await fetch(`${BASE}/oauth2/token`, {
+      method: 'POST',
+      headers: { Authorization: `Basic ${basic}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: refresh, scope: '*' }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok || !body.access_token) throw new Error(`token refresh failed: ${body.error || res.status}`);
+    return body.access_token;
+  }
+  if (process.env.SIGNNOW_API_TOKEN) return process.env.SIGNNOW_API_TOKEN;
+  console.error('Set SIGNNOW_BASIC_TOKEN + SIGNNOW_REFRESH_TOKEN (preferred) or SIGNNOW_API_TOKEN.');
   process.exit(1);
 }
+
+const TOKEN = await resolveToken();
 
 async function sn(path, init = {}) {
   const res = await fetch(`${BASE}${path}`, {

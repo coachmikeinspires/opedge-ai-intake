@@ -1,7 +1,8 @@
 // SignNow integration: copy a template, prefill sender text fields, and send
-// a two-signer invite. Uses SIGNNOW_API_TOKEN / SIGNNOW_TEMPLATE_ID from env.
+// a two-signer invite. Access tokens are obtained/refreshed automatically by
+// lib/signnowAuth; SIGNNOW_TEMPLATE_ID comes from env.
 
-const SIGNNOW_BASE = 'https://api.signnow.com';
+import { SIGNNOW_BASE, getSignNowAccessToken, isSignNowAuthFailure } from './signnowAuth';
 
 export type AgreementPricing = {
   setup_fee: number;
@@ -18,17 +19,17 @@ export type AgreementSubmission = {
   company_name: string | null;
 };
 
-function requireEnv(name: 'SIGNNOW_API_TOKEN' | 'SIGNNOW_TEMPLATE_ID'): string {
+function requireEnv(name: 'SIGNNOW_TEMPLATE_ID'): string {
   const value = process.env[name];
   if (!value) throw new Error(`${name} is required.`);
   return value;
 }
 
-async function sn(path: string, init: RequestInit = {}) {
+async function snFetch(path: string, init: RequestInit, token: string) {
   const res = await fetch(`${SIGNNOW_BASE}${path}`, {
     ...init,
     headers: {
-      Authorization: `Bearer ${requireEnv('SIGNNOW_API_TOKEN')}`,
+      Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
       ...(init.headers || {}),
     },
@@ -36,11 +37,24 @@ async function sn(path: string, init: RequestInit = {}) {
   const text = await res.text();
   let body: any = {};
   try { body = text ? JSON.parse(text) : {}; } catch { body = { raw: text }; }
+  return { ok: res.ok, status: res.status, body };
+}
+
+async function sn(path: string, init: RequestInit = {}) {
+  let token = await getSignNowAccessToken();
+  let res = await snFetch(path, init, token);
+
+  // Expired/revoked access token: refresh once and retry the call.
+  if (!res.ok && isSignNowAuthFailure(res.status, res.body)) {
+    token = await getSignNowAccessToken(true);
+    res = await snFetch(path, init, token);
+  }
+
   if (!res.ok) {
-    const detail = body?.errors?.[0]?.message || body?.error || body?.message || `HTTP ${res.status}`;
+    const detail = res.body?.errors?.[0]?.message || res.body?.error || res.body?.message || `HTTP ${res.status}`;
     throw new Error(`SignNow ${init.method || 'GET'} ${path} failed: ${detail}`);
   }
-  return body;
+  return res.body;
 }
 
 export function formatMoney(value: number): string {
