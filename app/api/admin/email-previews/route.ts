@@ -5,7 +5,10 @@ import {
   adminNotificationEmail,
   agreementSentEmail,
   agreementErrorEmail,
-  signedNotificationEmail,
+  paymentEmail,
+  paymentLinkSentNotification,
+  paidNotification,
+  onboardingEmail,
 } from '@/lib/emailTemplates';
 
 const MIKE = 'mike@opedge.ai';
@@ -30,6 +33,8 @@ export async function POST(request: NextRequest) {
     submitted_at: new Date().toISOString(),
     ip_address: '203.0.113.7',
     user_agent: 'PreviewBot/1.0',
+    setup_fee_cents: 250000,
+    monthly_fee_cents: 75000,
   };
 
   const previews = [
@@ -48,7 +53,10 @@ export async function POST(request: NextRequest) {
       }),
     },
     { name: 'signnow_error', email: agreementErrorEmail('SignNow POST /template/.../copy failed: invalid_token') },
-    { name: 'signed_notification', email: signedNotificationEmail(sample) },
+    { name: 'payment_email_client', email: paymentEmail(sample, 'https://buy.stripe.com/test_preview_link') },
+    { name: 'payment_link_sent_notification', email: paymentLinkSentNotification(sample) },
+    { name: 'paid_notification', email: paidNotification(sample) },
+    { name: 'onboarding_email_client', email: onboardingEmail(sample) },
   ];
 
   const resend = getResendClient();

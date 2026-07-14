@@ -93,17 +93,70 @@ export function agreementErrorEmail(message: string) {
   };
 }
 
-export function signedNotificationEmail(data: { primary_contact_name?: string | null; onboarding_windows?: string | null }) {
+function centsText(cents: number | null | undefined): string {
+  const n = Number(cents);
+  if (!Number.isFinite(n)) return '—';
+  const dollars = n / 100;
+  return `$${dollars.toLocaleString('en-US', {
+    minimumFractionDigits: Number.isInteger(dollars) ? 0 : 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+/** Client-facing: agreement signed → pay to schedule onboarding. */
+export function paymentEmail(
+  data: {
+    primary_contact_name?: string | null;
+    setup_fee_cents?: number | null;
+    monthly_fee_cents?: number | null;
+  },
+  paymentUrl: string,
+) {
+  const name = sanitizeText(data.primary_contact_name || '') || 'there';
+  const setup = centsText(data.setup_fee_cents);
+  const month = centsText(data.monthly_fee_cents);
+  const button = `<a href="${paymentUrl.replace(/"/g, '&quot;')}" style="display:inline-block;margin:4px 0 18px;padding:14px 24px;border-radius:12px;background:#2563eb;color:#e0f2fe;text-decoration:none;font-weight:700;font-size:16px;">Complete setup payment</a>`;
+
+  return {
+    subject: 'Your agreement is signed — complete payment to schedule onboarding',
+    html: `<html><body style="font-family: Inter, sans-serif; background:#020617; color:#e2e8f0; padding:24px;"><div style="max-width:600px; margin:0 auto; background:#0f172a; border:1px solid rgba(148,163,184,.16); border-radius:20px; padding:28px;"><h1 style="margin:0 0 16px;font-size:24px;color:#bfdbfe;">Welcome aboard, ${name}!</h1><p style="margin:0 0 16px; color:#cbd5e1;">Your agreement is signed — we're excited to get started. One step left: complete your setup payment to schedule onboarding.</p>${button}<ul style="margin:0 0 16px; padding-left:20px; color:#cbd5e1;"><li style="margin:0 0 6px;">Setup fee: ${setup}</li><li style="margin:0 0 6px;">First month of service: ${month}</li></ul><p style="margin:0 0 16px; color:#cbd5e1;">As soon as payment is in, you'll receive an email to schedule your setup session.</p><p style="margin:0; color:#cbd5e1;">Talk soon,<br/>The Op Edge AI team</p></div></body></html>`,
+  };
+}
+
+/** Internal: signed → payment link sent to the client. */
+export function paymentLinkSentNotification(data: {
+  primary_contact_name?: string | null;
+  setup_fee_cents?: number | null;
+  monthly_fee_cents?: number | null;
+}) {
+  const name = sanitizeText(data.primary_contact_name || '') || 'Client';
+  const body = `<p style="margin:0 0 16px; color:#cbd5e1;">${name} completed signing. The payment email went out to them automatically (you were CC'd): setup ${centsText(data.setup_fee_cents)} + first month ${centsText(data.monthly_fee_cents)}.</p><p style="margin:0 0 12px; color:#cbd5e1;">Onboarding email is held until Stripe confirms payment — nothing for you to do yet.</p>${actionLinksHtml([
+    { label: 'Open intake queue', url: adminQueueUrl() },
+  ])}`;
+  return {
+    subject: `${String(data.primary_contact_name || 'Client').replace(/[\r\n]+/g, ' ')} signed — payment link sent`,
+    html: internalShell(`${name} signed — payment link sent`, body),
+  };
+}
+
+/** Internal: payment confirmed → onboarding email released. */
+export function paidNotification(data: {
+  primary_contact_name?: string | null;
+  onboarding_windows?: string | null;
+  setup_fee_cents?: number | null;
+  monthly_fee_cents?: number | null;
+}) {
   const name = sanitizeText(data.primary_contact_name || '') || 'Client';
   const windows = sanitizeText(data.onboarding_windows || '');
-  const body = `<p style="margin:0 0 16px; color:#cbd5e1;">${name} completed signing. The onboarding email went out to them automatically (you were CC'd).</p>${
+  const amounts = `${centsText(data.setup_fee_cents)} setup + ${centsText(data.monthly_fee_cents)} first month`;
+  const body = `<p style="margin:0 0 16px; color:#cbd5e1;">${name} paid (${amounts}). The onboarding email went out to them automatically (you were CC'd).</p>${
     windows ? `<p style="margin:0 0 16px; color:#cbd5e1;">Their stated availability: <strong style="color:#e2e8f0;">${windows}</strong></p>` : ''
   }<p style="margin:0 0 12px; color:#cbd5e1;"><strong style="color:#e2e8f0;">Next human step:</strong> reply to confirm their setup session time by email.</p>${actionLinksHtml([
     { label: 'Open intake queue', url: adminQueueUrl() },
   ])}`;
   return {
-    subject: `${String(data.primary_contact_name || 'Client').replace(/[\r\n]+/g, ' ')} signed — onboarding email sent automatically`,
-    html: internalShell(`${name} signed 🎉`, body),
+    subject: `PAID: ${String(data.primary_contact_name || 'Client').replace(/[\r\n]+/g, ' ')} — ${amounts}`,
+    html: internalShell(`${name} paid 🎉`, body),
   };
 }
 

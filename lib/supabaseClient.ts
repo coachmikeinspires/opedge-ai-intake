@@ -9,6 +9,12 @@ export function getSupabaseAdmin(): SupabaseClient {
 
   return createClient(url, key, {
     auth: { persistSession: false },
-    global: { headers: { 'x-application-name': 'opedge-intake' } },
+    global: {
+      headers: { 'x-application-name': 'opedge-intake' },
+      // Next.js patches global fetch and caches responses in server
+      // components/routes; DB reads must never be served from that cache
+      // (the admin queue was showing stale statuses).
+      fetch: (input, init) => fetch(input, { ...init, cache: 'no-store' }),
+    },
   });
 }

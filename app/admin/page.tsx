@@ -11,6 +11,8 @@ const STATUS_LABELS: Record<string, string> = {
   intake_received: 'Intake received',
   agreement_sent: 'Agreement sent',
   signed: 'Signed',
+  payment_pending: 'Payment pending',
+  paid: 'Paid',
   onboarding_sent: 'Onboarding sent',
 };
 
@@ -86,6 +88,12 @@ export default async function AdminPage({ searchParams }: PageProps) {
                       <input name="handover_fee" type="number" min="0" step="any" placeholder="Handover fee" style={{ width: 110 }} />
                       <input name="usage_ceiling_text" type="text" placeholder="Usage ceiling (text)" style={{ width: 170 }} />
                       <button type="submit">Generate &amp; Send Agreement</button>
+                    </form>
+                  ) : s.status === 'payment_pending' ? (
+                    <form method="post" action="/api/admin/resend-payment-link">
+                      <input type="hidden" name="token" value={token} />
+                      <input type="hidden" name="submission_id" value={s.id} />
+                      <button type="submit" className="secondary-button">Resend payment link</button>
                     </form>
                   ) : (
                     <span style={{ color: '#64748b' }}>—</span>

@@ -1,13 +1,10 @@
 import crypto from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdmin } from '@/lib/supabaseClient';
-import { getResendClient } from '@/lib/resendClient';
-import { onboardingEmail, signedNotificationEmail } from '@/lib/emailTemplates';
 import { getDocument, isDocumentComplete, documentSignerEmails } from '@/lib/signnow';
+import { handleSigned } from '@/lib/pipeline';
 import { isValidAdminToken } from '@/lib/adminAuth';
-import { logError, logInfo } from '@/lib/logger';
-
-const MIKE = 'mike@opedge.ai';
+import { logError } from '@/lib/logger';
 
 // Security model, layered:
 // 1. If SIGNNOW_WEBHOOK_SECRET is set and SignNow includes an HMAC signature
@@ -43,78 +40,13 @@ function extractDocumentId(payload: any): string | null {
   );
 }
 
-async function sendOnboardingEmail(submission: any) {
-  const email = onboardingEmail(submission);
-  await getResendClient().emails.send({
-    from: 'noreply@opedge.ai',
-    to: submission.primary_contact_email,
-    cc: MIKE,
-    replyTo: MIKE,
-    subject: email.subject,
-    html: email.html,
-  });
-}
-
-/**
- * Runs the idempotent post-signature transitions for one submission:
- *   agreement_sent → signed → (send onboarding email) → onboarding_sent
- * Conditional updates make each transition single-winner, so duplicate or
- * concurrent webhook deliveries cannot double-send the onboarding email.
- */
-async function processSigned(submissionId: number | string): Promise<string> {
-  const supabase = getSupabaseAdmin();
-
-  // agreement_sent → signed (no-op if already past this state)
-  await supabase
-    .from('intake_submissions')
-    .update({ status: 'signed' })
-    .eq('id', submissionId)
-    .eq('status', 'agreement_sent');
-
-  // Claim signed → onboarding_sent atomically; only the winner sends email.
-  const { data: claimed, error: claimError } = await supabase
-    .from('intake_submissions')
-    .update({ status: 'onboarding_sent' })
-    .eq('id', submissionId)
-    .eq('status', 'signed')
-    .select('id, primary_contact_name, primary_contact_email, assistant_name, onboarding_windows')
-    .maybeSingle();
-
-  if (claimError) throw new Error(`Status claim failed: ${claimError.message}`);
-  if (!claimed) return 'already_processed';
-
-  try {
-    await sendOnboardingEmail(claimed);
-    logInfo('Onboarding email sent', { submissionId });
-
-    // Heads-up to Mike (in addition to the CC on the client email). Failure
-    // here must not unwind the completed transition — log and move on.
-    try {
-      const note = signedNotificationEmail(claimed);
-      await getResendClient().emails.send({ from: 'noreply@opedge.ai', to: MIKE, subject: note.subject, html: note.html });
-    } catch (noteError) {
-      logError('Signed notification email failed', { submissionId, error: (noteError as Error).message });
-    }
-    return 'onboarding_sent';
-  } catch (emailError) {
-    // Release the claim so a webhook retry can attempt the email again.
-    await supabase
-      .from('intake_submissions')
-      .update({ status: 'signed' })
-      .eq('id', submissionId)
-      .eq('status', 'onboarding_sent');
-    throw emailError;
-  }
-}
-
 export async function POST(request: NextRequest) {
   const rawBody = await request.text();
   let payload: any = {};
   try { payload = rawBody ? JSON.parse(rawBody) : {}; } catch { payload = {}; }
 
   // Admin-gated simulation path for QA: skips SignNow verification but runs
-  // the REAL transitions + email. Requires the admin token; never usable by
-  // outside callers.
+  // the REAL signed-stage transitions (payment link + payment email).
   const url = request.nextUrl;
   if (url.searchParams.get('simulate') === '1') {
     if (!isValidAdminToken(url.searchParams.get('token'))) {
@@ -128,14 +60,14 @@ export async function POST(request: NextRequest) {
       .from('intake_submissions')
       .select('id, status')
       .ilike('primary_contact_email', clientEmail)
-      .in('status', ['agreement_sent', 'signed', 'onboarding_sent'])
+      .in('status', ['agreement_sent', 'signed', 'payment_pending', 'paid', 'onboarding_sent'])
       .order('submitted_at', { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    if (!submission) return NextResponse.json({ error: 'No matching submission in agreement_sent/signed state.' }, { status: 404 });
+    if (!submission) return NextResponse.json({ error: 'No matching submission.' }, { status: 404 });
     try {
-      const result = await processSigned(submission.id);
+      const result = await handleSigned(submission.id);
       return NextResponse.json({ simulated: true, result });
     } catch (err) {
       return NextResponse.json({ simulated: true, error: (err as Error).message }, { status: 500 });
@@ -194,7 +126,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true, ignored: `status is ${submission.status}` });
     }
 
-    const result = await processSigned(submission.id);
+    const result = await handleSigned(submission.id);
     return NextResponse.json({ ok: true, result });
   } catch (err) {
     logError('SignNow webhook processing failed', { error: (err as Error).message });
