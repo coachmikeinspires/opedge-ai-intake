@@ -14,9 +14,23 @@ export const MIKE = 'mike@opedge.ai';
 const SUBMISSION_FIELDS =
   'id, primary_contact_name, primary_contact_email, legal_name, company_name, assistant_name, onboarding_windows, setup_fee_cents, monthly_fee_cents, stripe_payment_link, status';
 
+/**
+ * Resend's SDK resolves with { data, error } and does NOT throw on API-level
+ * failures — every send must check the response or a failed send gets logged
+ * as success. Throws on failure; logs the Resend email id on success.
+ */
+async function sendEmail(label: string, payload: Parameters<ReturnType<typeof getResendClient>['emails']['send']>[0]): Promise<string> {
+  const { data, error } = await getResendClient().emails.send(payload);
+  if (error || !data?.id) {
+    throw new Error(`Resend send failed (${label}): ${error?.message || 'no email id returned'}`);
+  }
+  logInfo(`Email accepted by Resend (${label})`, { resendId: data.id });
+  return data.id;
+}
+
 async function sendPaymentEmail(submission: any, paymentUrl: string) {
   const email = paymentEmail(submission, paymentUrl);
-  await getResendClient().emails.send({
+  await sendEmail('payment email', {
     from: 'noreply@opedge.ai',
     to: submission.primary_contact_email,
     cc: MIKE,
@@ -28,7 +42,7 @@ async function sendPaymentEmail(submission: any, paymentUrl: string) {
 
 async function sendOnboardingEmail(submission: any) {
   const email = onboardingEmail(submission);
-  await getResendClient().emails.send({
+  await sendEmail('onboarding email', {
     from: 'noreply@opedge.ai',
     to: submission.primary_contact_email,
     cc: MIKE,
@@ -40,7 +54,7 @@ async function sendOnboardingEmail(submission: any) {
 
 async function notifyMike(email: { subject: string; html: string }) {
   try {
-    await getResendClient().emails.send({ from: 'noreply@opedge.ai', to: MIKE, subject: email.subject, html: email.html });
+    await sendEmail('mike notification', { from: 'noreply@opedge.ai', to: MIKE, subject: email.subject, html: email.html });
   } catch (err) {
     logError('Mike notification failed', { error: (err as Error).message });
   }
